@@ -52,32 +52,32 @@ function isJSON($string) {
 
 // MAIN.
 // Process a POST request.
-if ($_SERVER['REQUEST METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Check and read variables, if provided.
     if (!isset($_POST['id']) || 
-        !isset($_POST['msg'])) {
+        !isset($_POST['doc'])) {
         jsonMessage("Incorrect parameters.");
     }
     if (preg_match("/[^A-Za-z0-9-_.:]+/", $_POST['id']) || 
-        preg_match("/[^A-Za-z0-9\s-_.!?,:\"{}\[\]\(\)]+/", $_POST['msg'])) {
+        preg_match("/[^A-Za-z0-9\s-_.!?,:\"{}\[\]\(\)]+/", $_POST['doc'])) {
         jsonMessage("Invalid parameters.");
     }
-    if ( !isJSON($_POST['msg']) ) {
+    if ( !isJSON($_POST['doc']) ) {
         jsonMessage("New document is invalid.");
     }
     $id = $_POST['id'];
-    $msg = $_POST['msg'];
+    $doc = $_POST['doc'];
 
     // Prepare SQL.
-    $sql1 = "SELECT * FROM variables WHERE id=$id;";
-    $sql2 = "UPDATE variables SET value='$value' WHERE id='$id';";
+    $sql1 = "SELECT * FROM mongo_lite WHERE id='$id';";
+    $sql2 = "UPDATE mongo_lite SET document='$doc' WHERE id='$id';";
     openSQL();
 
     // Change SQL if variable doesn't exist.
     if ($result1 = $GLOBALS['conn']->query($sql1)) {
         if ($result1->num_rows == 0) {
-            $sql2 = "INSERT INTO variables (id, value) VALUES ('$id', '$value');";
+            $sql2 = "INSERT INTO mongo_lite (id, document) VALUES ('$id', '$doc');";
         }
         $result1->close();
     }
@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST METHOD'] === 'POST') {
 }
 
 // Process a GET request.
-else {
+else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
     // Check and read variable, if provided.
     if ( !isset($_GET['id']) ) {
@@ -108,7 +108,7 @@ else {
     $id = $_GET['id'];
 
     // Prepare SQL.
-    $sql1 = "SELECT * FROM variables WHERE id LIKE '$id';";
+    $sql1 = "SELECT * FROM mongo_lite WHERE id LIKE '$id';";
     openSQL();
 
     // Fetch SQL results.
@@ -138,6 +138,11 @@ else {
     echo json_encode($json,JSON_PRETTY_PRINT);
 
     mysqli_close($GLOBALS['conn']);
+}
+
+// Process other request types.
+else {
+    jsonMessage("Database operation type not permitted.");
 }
 
 ?>
