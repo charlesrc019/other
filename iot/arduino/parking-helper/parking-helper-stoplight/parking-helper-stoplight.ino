@@ -1,8 +1,7 @@
 /*-------------------------------------------------------------
  * 
  *   .SYNOPSIS
- *   PARKING HELPER - MEASURE
- *   Measure the position of a car to park to correctly.
+ *   PARKING HELPER - STOPLIGHT
  *   
  *   .NOTES
  *   Author: Charles Christensen
