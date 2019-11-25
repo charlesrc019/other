@@ -1,8 +1,8 @@
 /*-------------------------------------------------------------
  * 
  *   .SYNOPSIS
- *   PARKING HELPER - MEASURE
- *   Measure the position of a car to park to correctly.
+ *   PARKING HELPER - GARAGE DOOR CONTROLLER
+ *   Relay controller to open/close the garage door..
  *   
  *   .NOTES
  *   Author: Charles Christensen
