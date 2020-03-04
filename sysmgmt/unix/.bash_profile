@@ -22,3 +22,6 @@ fi
 # Add GitHub key.
 ssh-add ~/.ssh/github > /dev/null
 echo ""
+
+# Reset bash leadline.
+export PS1='[\u@\h \W]\$ '
