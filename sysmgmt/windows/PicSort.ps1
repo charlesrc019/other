@@ -6,21 +6,21 @@ Sort pictures into an organized directory structure based on their timestamp
 
 .NOTES
 Author: Charles Christensen (github.com/charlesrc19)
-Required Dependencies: System.Drawing
+Required Dependencies: MediaInfo CLI
 Optional Dependencies: none
 
 -------------------------------------------------------------------------------------------------------------------#>
 
 # Initialize parameters.
 $SOURCE_DIR = "D:\old"
-$DEST_DIR = "D:\new"
-$notimg_dir = "$SOURCE_DIR\PicSort\not_image"
+$DEST_DIR = "D:\All"
+$MEDIAINFO_PATH = "C:\Users\crc19\Downloads\mediainfo"
+$valid_exts = @("jpg","jpeg","avi","mp4", "3gp", "mov","png","gif","mpo","mpg","raw")
+$notimg_dir = "$SOURCE_DIR\PicSort\INVALID_IMG"
 $notime_dir = "$SOURCE_DIR\PicSort\not_timestamped"
-$valid_exts = @(".jpg",".jpeg",".avi",".mp4", ".3gp", ".mov",".png",".mpo","mpg")
 $dir_count = 0
 $sort_count = 0
 $err_count = 0
-$bsp_count = 0
 
 # Initialize libraries.
 [reflection.assembly]::LoadWithPartialName("System.Drawing") | Out-Null
@@ -28,12 +28,13 @@ $bsp_count = 0
 # Function. Move photo based on EXIF timestamp.
 function Photo-Move([string]$path, [string]$filename) {
 
-    Write-Progress -Activity "$path\$filename" -PercentComplete 42
+    Write-Progress -Activity "$path\$filename"
 
     # Check if it is a valid file.
     $valid = $false
+    $ext = $filename.Split(".")[-1].ToLower()
     foreach ($valid_ext in $valid_exts) {
-        if ($filename -match $valid_ext) {
+        if ($ext -eq $valid_ext) {
             $valid = $true
         }
     }
@@ -62,8 +63,20 @@ function Photo-Move([string]$path, [string]$filename) {
     }
     catch {
         try {
-            $file = Get-Item "$path\$filename"
-            $timestamp = $file.LastWriteTime
+            try {
+                $data = Invoke-Expression "$MEDIAINFO_PATH\MediaInfo.exe $path\$filename --full --output=JSON" | ConvertFrom-Json
+                $string = [string]$tmp.media.track.Where{$_.'@Type' -eq 'General'}.Encoded_Date
+                $arr = $string.Split()[1,-1]
+                $string = $arr -join " "
+                $timestamp = [datetime]::ParseExact($string,"yyyy-MM-dd HH:mm:ss",$Null)
+            }
+            catch {
+                $file = Get-Item "$path\$filename"
+                $timestamp = $file.LastWriteTime
+            }
+            if ($timestamp -eq $null) {
+                throw
+            }
         }
         catch {
             Directory-Check $notime_dir
@@ -78,19 +91,26 @@ function Photo-Move([string]$path, [string]$filename) {
     $month = $timestamp.ToString("MM")
     $daystamp = $timestamp.ToString("dd_HHmmss")
     $extra = ""
-    $ext = $filename.Split(".")[-1].ToLower()
 
     # Move photo, rename if needed, and move to cache if failed.
     Directory-Check "$DEST_DIR\$year\$month"
+    $overflow = $false
     while (Test-Path "$DEST_DIR\$year\$month\$daystamp$extra.$ext") {
         if ($extra -eq "") {
             $extra = "B"
         }
         else {
             $extra = [char]([byte]([char]$extra) + 1)
+            if ($extra -notmatch '^[a-z0-9]+$') {
+                $overflow = $true
+                break
+            }
         }
     }
     try {
+        if ($overflow) {
+            throw
+        }
         Move-Item -Path "$path\$filename" -Destination "$DEST_DIR\$year\$month\$daystamp$extra.$ext" 
         $global:sort_count++
     }
@@ -109,9 +129,7 @@ function Directory-Check([string]$dir) {
 }
 
 # Function. Scan directories for files. Recurse into subdirectories.
-function Directory-Scan([string]$path) {
-
-    Write-Progress -Activity "$path" -PercentComplete 10
+function Directory-Scan([string]$path, [bool]$base=$false) {
 
     # Check that we have entered a valid directory.
     $global:dir_count++
@@ -134,7 +152,12 @@ function Directory-Scan([string]$path) {
     }
 
     # Recurse into subdirectories.
+    $index = 0
     foreach ($dir in $dirs) {
+        $index++
+        if ($base) {
+            Write-Progress -Activity $path -PercentComplete (($index / $dirs.Count) * 90)
+        }
         $new_dir = $path + "\" + $dir.Name
         Directory-Scan $new_dir
     }
@@ -143,15 +166,20 @@ function Directory-Scan([string]$path) {
     foreach ($file in $files) {
         Photo-Move $path $file.Name
     }
+    if ($base) {
+        Write-Progress -Activity $path -PercentComplete 100
+    }
 }
 
 # Main.
+cls
 Write-Host "PicSort started."
 Write-Host -ForegroundColor Yellow "(Please wait. We're going through all your photos, and that can take a while.)"
 Write-Host ""
 Directory-Check $DEST_DIR
-Directory-Scan $SOURCE_DIR
+Directory-Scan $SOURCE_DIR $true
 Write-Progress -Activity "Done" -PercentComplete 100
 Write-Host "Directories Scanned: $dir_count"
 Write-Host "Pictures Sorted: $sort_count"
 Write-Host "Files w/ Errors: $err_count"
+Write-Host ""
