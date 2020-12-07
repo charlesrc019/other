@@ -137,21 +137,19 @@ function Directory-Scan([string]$path) {
     foreach ($dir in $dirs) {
         $new_dir = $path + "\" + $dir.Name
         Directory-Scan $new_dir
-        #DEBUG Write-Host $new_dir
     }
 
     # Process files in directory.
     foreach ($file in $files) {
         Photo-Move $path $file.Name
-        #DEBUG Write-Host $path $file.Name
     }
 }
 
 # Main.
-Directory-Check $DEST_DIR
 Write-Host "PicSort started."
 Write-Host -ForegroundColor Yellow "(Please wait. We're going through all your photos, and that can take a while.)"
 Write-Host ""
+Directory-Check $DEST_DIR
 Directory-Scan $SOURCE_DIR
 Write-Progress -Activity "Done" -PercentComplete 100
 Write-Host "Directories Scanned: $dir_count"
