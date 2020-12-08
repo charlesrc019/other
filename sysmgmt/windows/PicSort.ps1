@@ -12,12 +12,14 @@ Optional Dependencies: none
 -------------------------------------------------------------------------------------------------------------------#>
 
 # Initialize parameters.
-$SOURCE_DIR = "D:\old"
+$SOURCE_DIR = "D:\All"
 $DEST_DIR = "D:\All"
+$DELETE_DUPS = $true
 $MEDIAINFO_PATH = "C:\Users\crc19\Downloads\mediainfo"
-$valid_exts = @("jpg","jpeg","avi","mp4", "3gp", "mov","png","gif","mpo","mpg","raw")
+
+$valid_exts = @("jpg","jpeg","gif","png","mpo","raw","mp4", "3gp", "mov","avi","mpg")
 $notimg_dir = "$SOURCE_DIR\PicSort\INVALID_IMG"
-$notime_dir = "$SOURCE_DIR\PicSort\not_timestamped"
+$notime_dir = "$SOURCE_DIR\PicSort\INVALID_TIMESTAMP"
 $dir_count = 0
 $sort_count = 0
 $err_count = 0
@@ -27,8 +29,6 @@ $err_count = 0
 
 # Function. Move photo based on EXIF timestamp.
 function Photo-Move([string]$path, [string]$filename) {
-
-    Write-Progress -Activity "$path\$filename"
 
     # Check if it is a valid file.
     $valid = $false
@@ -40,7 +40,7 @@ function Photo-Move([string]$path, [string]$filename) {
     }
     if (-not $valid) {
         Directory-Check $notimg_dir
-        Move-Item -Path "$path\$filename" -Destination "$notimg_dir\$filename" -Force
+        Move-Item -LiteralPath "$path\$filename" -Destination "$notimg_dir\$filename" -Force
         $global:err_count++
         return
     }
@@ -65,7 +65,7 @@ function Photo-Move([string]$path, [string]$filename) {
         try {
             try {
                 $data = Invoke-Expression "$MEDIAINFO_PATH\MediaInfo.exe $path\$filename --full --output=JSON" | ConvertFrom-Json
-                $string = [string]$tmp.media.track.Where{$_.'@Type' -eq 'General'}.Encoded_Date
+                $string = [string]$data.media.track.Where{$_.'@Type' -eq 'General'}.Encoded_Date
                 $arr = $string.Split()[1,-1]
                 $string = $arr -join " "
                 $timestamp = [datetime]::ParseExact($string,"yyyy-MM-dd HH:mm:ss",$Null)
@@ -80,7 +80,7 @@ function Photo-Move([string]$path, [string]$filename) {
         }
         catch {
             Directory-Check $notime_dir
-            Move-Item -Path "$path\$filename" -Destination "$notime_dir\$filename" -Force
+            Move-Item -LiteralPath "$path\$filename" -Destination "$notime_dir\$filename" -Force
             $global:err_count++
             return
         }
@@ -95,15 +95,18 @@ function Photo-Move([string]$path, [string]$filename) {
     # Move photo, rename if needed, and move to cache if failed.
     Directory-Check "$DEST_DIR\$year\$month"
     $overflow = $false
-    while (Test-Path "$DEST_DIR\$year\$month\$daystamp$extra.$ext") {
-        if ($extra -eq "") {
-            $extra = "B"
-        }
-        else {
-            $extra = [char]([byte]([char]$extra) + 1)
-            if ($extra -notmatch '^[a-z0-9]+$') {
-                $overflow = $true
-                break
+
+    if (-not $DELETE_DUPS) {
+        while (Test-Path "$DEST_DIR\$year\$month\$daystamp$extra.$ext") {
+            if ($extra -eq "") {
+                $extra = "B"
+            }
+            else {
+                $extra = [char]([byte]([char]$extra) + 1)
+                if ($extra -notmatch '^[a-z0-9]+$') {
+                    $overflow = $true
+                    break
+                }
             }
         }
     }
@@ -111,12 +114,12 @@ function Photo-Move([string]$path, [string]$filename) {
         if ($overflow) {
             throw
         }
-        Move-Item -Path "$path\$filename" -Destination "$DEST_DIR\$year\$month\$daystamp$extra.$ext" 
+        Move-Item -LiteralPath "$path\$filename" -Destination "$DEST_DIR\$year\$month\$daystamp$extra.$ext" -Force
         $global:sort_count++
     }
     catch {
         Directory-Check $notime_dir
-        Move-Item -Path "$path\$filename" -Destination "$notime_dir\$filename" -Force
+        Move-Item -LiteralPath "$path\$filename" -Destination "$notime_dir\$filename" -Force
         $global:err_count++
     }  
 }
@@ -141,7 +144,7 @@ function Directory-Scan([string]$path, [bool]$base=$false) {
     # Extract and sort directory children.
     $dirs = @()
     $files = @()
-    $children = Get-ChildItem -Path $path -Force
+    $children = Get-ChildItem -LiteralPath $path -Force | Sort
     foreach ($child in $children) {
         if ($child.PSIsContainer) {
             $dirs += $child
@@ -156,7 +159,7 @@ function Directory-Scan([string]$path, [bool]$base=$false) {
     foreach ($dir in $dirs) {
         $index++
         if ($base) {
-            Write-Progress -Activity $path -PercentComplete (($index / $dirs.Count) * 90)
+            Write-Progress -Activity $path\$dir -PercentComplete (($index / $dirs.Count) * 90)
         }
         $new_dir = $path + "\" + $dir.Name
         Directory-Scan $new_dir
