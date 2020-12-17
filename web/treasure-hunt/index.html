@@ -8,10 +8,13 @@
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css" integrity="sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ" crossorigin="anonymous">
     <style>
       .level-content-center {
-        min-height: 100%;
-        min-height: 100vh;
+        min-height: 85%;
+        min-height: 85vh;
         display: flex;
         align-items: center;
+      }
+      form {
+        min-height: 370px;
       }
       .form-control:focus {
         box-shadow: none;
@@ -37,20 +40,19 @@
 
     <div class="container">
       <div class="row d-flex justify-content-center level-content-center">
-        <form class="p-3">
+        <form id="form" class="p-3">
           <img class="d-block mx-auto mb-4" src="safe.png">
           <div class="input-group">
             <div class="input-group-prepend">
               <span class="input-group-text"><i class="fas fa-hashtag"></i></span>
             </div>
-            <input type="password" id="code" class="form-control" placeholder="Secret Code" aria-label="Secret Code" required>
+            <input type="password" id="code" class="form-control" placeholder="Secret Code" aria-label="Secret Code"required>
             <div class="input-group-append">
               <span class="input-group-text"><i id="reveal" class="far fa-eye"></i></span>
               <button id="submit" class="btn btn-primary" type="button"><i class="fas fa-arrow-right"></i></button>
             </div>
           </div>
           <small id="error" class="form-text text-danger d-none">Invalid code. Try again.</small>
-          <small id="message" class="form-text text-muted">Only letters and numbers.</small>
         </form>
       </div>
     </div>
