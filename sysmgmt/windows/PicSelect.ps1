@@ -16,9 +16,9 @@ $SOURCE_DIR = ""
 $DEST_DIR = ""
 $DEST_WIDTH = 1920
 $DEST_HEIGHT = 1200
-$GBS_TO_SELECT = 1
-$EXIFTOOL_LOC = "C:\Users\Christensen\Downloads\PicSelect\exiftool\exiftool.exe"
-$IMGMAGIKCONVERT_LOC = "C:\Users\Christensen\Downloads\PicSelect\imagemagick\convert.exe"
+$GBS_TO_SELECT = 8
+$EXIFTOOL_LOC = ""
+$IMGMAGIKCONVERT_LOC = ""
 
 $valid_exts = @("jpg","jpeg")
 $pics = @()
