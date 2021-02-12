@@ -6,29 +6,35 @@ Randomly select a amount of photos
 
 .NOTES
 Author: Charles Christensen (github.com/charlesrc19)
-Required Dependencies: none
+Required Dependencies: ExifTool, ImgMagik
 Optional Dependencies: none
 
 -------------------------------------------------------------------------------------------------------------------#>
 
 # Initialize parameters.
-$SOURCE_DIR = ""
-$DEST_DIR = ""
+$SOURCE_DIR = "D:\Pictures\Photos\2018\01"
+$DEST_DIR = "C:\Users\Christensen\Downloads\PicSelect\test"
+$DEST_WIDTH = 1920
+$DEST_HEIGHT = 1200
 $GBS_TO_SELECT = 1
+$EXIFTOOL_LOC = "C:\Users\Christensen\Downloads\PicSelect\exiftool\exiftool.exe"
+$IMGMAGIKCONVERT_LOC = "C:\Users\Christensen\Downloads\PicSelect\imagemagick\convert.exe"
 
 $valid_exts = @("jpg","jpeg")
 $pics = @()
-$already = New-Object System.Collections.Generic.HashSet[string]
+$used_pics = New-Object System.Collections.Generic.HashSet[string]
+$used_names = New-Object System.Collections.Generic.HashSet[string]
+$dest_ratio = [math]::Round(($DEST_WIDTH / $DEST_HEIGHT),2)
 
 # Initialize libraries.
 [reflection.assembly]::LoadWithPartialName("System.Drawing") | Out-Null
 
 # Function. Analyze photo based on EXIF dimensions.
-function Photo-Analyze([string]$path, [string]$filename) {
+function Photo-Analyze([string]$path) {
 
     # Check if it is a valid file.
     $valid = $false
-    $ext = $filename.Split(".")[-1].ToLower()
+    $ext = $path.Split(".")[-1].ToLower()
     foreach ($valid_ext in $valid_exts) {
         if ($ext -eq $valid_ext) {
             $valid = $true
@@ -38,35 +44,37 @@ function Photo-Analyze([string]$path, [string]$filename) {
         return
     }
 
-    # Load dimension info.
-    $wide = $false
+    # Analyze file dimenstions and orientation.
+    $data = & $EXIFTOOL_LOC $path -ImageWidth -ImageHeight -Orientation
+    [int32]$width = $data[0].Split()[-1]
+    [int32]$height = $data[1].Split()[-1]
+    $orientation = $data[2].Split()[-2]
     try {
-        $pic = New-Object System.Drawing.Bitmap("$path\$filename")
-        try {
-            if ($pic.Width -gt $pic.Height) {
-                $wide = $true
-            }
-        }
-        catch {
-            throw
-        }
-        finally {
-            $pic.Dispose()
+        if ( (($orientation / 90) % 2) -eq 1) {
+            $tmp = $width
+            $width = $height
+            $height = $tmp
         }
     }
-    catch {
-        return
+    catch { }
+
+    # Save data for horozontal images.
+    if ($width -gt $height) {
+        Write-Host $path
+        $ratio = [math]::Round(($width / $height),2)
+        $global:pics += [PSCustomObject]@{
+            Path    = $path
+            Width   = $width
+            Height  = $height
+            Ratio   = $ratio
+        }
+        return $true
     }
 
-    # Add valid photos to array.
-    if ($wide) {
-        $global:pics += "$path\$filename"
-        Write-Host "$path\$filename"
-    }
-    return
+    return $false
 }
 
-# Function.
+# Function. Select a random photo and random photo destinaton.
 function Photo-Select() {
     while ($true) {
 
@@ -75,17 +83,40 @@ function Photo-Select() {
         if ($size -gt $GBS_TO_SELECT) {
             break
         }
+        Write-Progress -Activity "Selecting random images..." -PercentComplete ($size / $GBS_TO_SELECT)
 
-        # Choose a random photo and copy it.
+
+        # Base case. Already used all pics.
+        if ($global:pics.Length -eq $global:used_pics.Count) {
+            Write-Host "All avalible pictures have been used!"
+            break
+        }
+
+        # Choose a random photo.
         while ($true) {
-            $filepath = Get-Random -InputObject $pics
-            if ($already.Add($filepath)) {
-                Copy-Item -Path $filepath -Destination $DEST_DIR -Force
-                Write-Host $size GB
+            $pic = Get-Random -InputObject $pics
+            if ($global:used_pics.Add($pic.Path)) {
+
+                # Create a random name.
+                while ($true) {
+                    $name = ( -join ((0x30..0x39) + (0x41..0x5A) | Get-Random -Count 12  | % {[char]$_}) )
+                    if ($global:used_names.Add($name)) {
+
+                        # Adjust, move, and sanitize photo.
+                        $dest_path = "$DEST_DIR\$name.jpg"
+                        [string]$dims = "$DEST_WIDTH" + "x" + "$DEST_HEIGHT"
+                        & $IMGMAGIKCONVERT_LOC $($pic.Path) -resize $dims^ -gravity center -extent $dims $dest_path
+                        & $EXIFTOOL_LOC -All= -overwrite_original $dest_path | Out-Null
+
+                        break
+                    }
+                }
+
                 break
             }
         }
     }
+    Write-Progress -Activity "Selecting random images..." -Status "Complete" -PercentComplete 100
 }
 
 # Function. Scan directories for files. Recurse into subdirectories.
@@ -120,7 +151,7 @@ function Directory-Scan([string]$path) {
 
     # Process files in directory.
     foreach ($file in $files) {
-        Photo-Analyze $path $file.Name
+        Photo-Analyze $file.FullName | Out-Null
     }
 }
 
@@ -130,5 +161,7 @@ Write-Host "PicSelect started."
 Write-Host -ForegroundColor Yellow "(Please wait. We're scanning all your photos, and that can take a while.)"
 Write-Host ""
 Directory-Scan $SOURCE_DIR
+Write-Host ""
 Photo-Select
+Write-Host ""
 Write-Host "Done!"
