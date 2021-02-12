@@ -12,8 +12,8 @@ Optional Dependencies: none
 -------------------------------------------------------------------------------------------------------------------#>
 
 # Initialize parameters.
-$SOURCE_DIR = "D:\Pictures\Photos\2018\01"
-$DEST_DIR = "C:\Users\Christensen\Downloads\PicSelect\test"
+$SOURCE_DIR = ""
+$DEST_DIR = ""
 $DEST_WIDTH = 1920
 $DEST_HEIGHT = 1200
 $GBS_TO_SELECT = 1
