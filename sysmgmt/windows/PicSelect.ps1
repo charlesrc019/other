@@ -17,14 +17,13 @@ $DEST_DIR = ""
 $DEST_WIDTH = 1920
 $DEST_HEIGHT = 1200
 $GBS_TO_SELECT = 8
-$EXIFTOOL_LOC = ""
-$IMGMAGIKCONVERT_LOC = ""
+$EXIFTOOL_LOC = "C:\Users\User\Downloads\exiftool.exe"
+$IMGMAGIKCONVERT_LOC = "C:\Users\User\Downloads\convert.exe"
 
 $valid_exts = @("jpg","jpeg")
 $pics = @()
 $used_pics = New-Object System.Collections.Generic.HashSet[string]
 $used_names = New-Object System.Collections.Generic.HashSet[string]
-$dest_ratio = [math]::Round(($DEST_WIDTH / $DEST_HEIGHT),2)
 
 # Initialize libraries.
 [reflection.assembly]::LoadWithPartialName("System.Drawing") | Out-Null
@@ -48,8 +47,8 @@ function Photo-Analyze([string]$path) {
     $data = & $EXIFTOOL_LOC $path -ImageWidth -ImageHeight -Orientation
     [int32]$width = $data[0].Split()[-1]
     [int32]$height = $data[1].Split()[-1]
-    $orientation = $data[2].Split()[-2]
     try {
+        $orientation = $data[2].Split()[-2]
         if ( (($orientation / 90) % 2) -eq 1) {
             $tmp = $width
             $width = $height
@@ -66,7 +65,6 @@ function Photo-Analyze([string]$path) {
             Path    = $path
             Width   = $width
             Height  = $height
-            Ratio   = $ratio
         }
         return $true
     }
@@ -83,8 +81,7 @@ function Photo-Select() {
         if ($size -gt $GBS_TO_SELECT) {
             break
         }
-        Write-Progress -Activity "Selecting random images..." -PercentComplete ($size / $GBS_TO_SELECT)
-
+        Write-Progress -Activity "Selecting random images..." -PercentComplete (($size / $GBS_TO_SELECT) * 100)
 
         # Base case. Already used all pics.
         if ($global:pics.Length -eq $global:used_pics.Count) {
