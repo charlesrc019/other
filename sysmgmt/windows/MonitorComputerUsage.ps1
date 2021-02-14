@@ -17,7 +17,7 @@ Function Test-TimeRange {
 }
 
 Function Test-LimitSwitch {
-    $url = 'http://charles.chris-eng.com/api/sysmgmt/KarlaC-pc20.limit'
+    $url = ''
     $req = [system.Net.WebRequest]::Create($url)
     $res = 0
     try {
@@ -33,7 +33,7 @@ Function Test-LimitSwitch {
 }
 
 Function Test-KillSwitch {
-    $url = 'http://charles.chris-eng.com/api/sysmgmt/KarlaC-pc20.kill'
+    $url = ''
     $req = [system.Net.WebRequest]::Create($url)
     $res = 0
     try {
