@@ -46,7 +46,7 @@ while ($true) {
     # Implement limits.
     if ($time_limit -or $switch_limit) {
         foreach ($limited_app in $LIMITED_APPS) {
-            #Stop-Process -Name $limited_app -Force -ErrorAction SilentlyContinue
+            Stop-Process -Name $limited_app -Force -ErrorAction SilentlyContinue
         }
     }
 
