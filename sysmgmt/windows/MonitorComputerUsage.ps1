@@ -1,4 +1,3 @@
-
 # Initialize variables.
 $LIMITED_HRS = @(0,1,2,3)
 $LIMITED_APPS = @("vlc","wmplayer","Microsoft.Photos","msedge","chrome","firefox","brave","chromium","opera","iexplore","taskmgr","mmc","IGCC","cmd","WinStore.App","powershell_ise","powershell")
