@@ -1,79 +1,58 @@
-﻿Function Test-Internet {
-    for($i = 0; $i -lt 8; $i++) {
-        if(Test-Connection -Quiet -ComputerName "1.1.1.1" -Count 1) {
-            return $true
-        }
-        Start-Sleep -Seconds 1
-    }
-    return $false
-}
 
-Function Test-TimeRange {
-    $hours = Get-Date -Format "HH" 
-    if ([Int32]$hours -lt 4) {
-        return $false
-    }
-    return $true
-}
+# Initialize variables.
+$LIMITED_HRS = @(0,1,2,3)
+$LIMITED_APPS = @("vlc","wmplayer","Microsoft.Photos","msedge","chrome","firefox","brave","chromium","opera","iexplore","taskmgr","mmc","IGCC","cmd","WinStore.App","powershell_ise","powershell")
+$SLEEP_SECS = 1
+$SWITCHCHK_SECS = 60 * 2
+$URL = 'http://www.chris-eng.com/api/ComputerUsage/status.txt'
 
-Function Test-LimitSwitch {
-    $url = ''
-    $req = [system.Net.WebRequest]::Create($url)
-    $res = 0
-    try {
-        $res = $req.GetResponse()
-    } 
-    catch [System.Net.WebException] {
-        $res = $_.Exception.Response
-    }
-    if ($res.StatusCode -eq "OK") {
-        return $true
-    }
-    return $false
-}
-
-Function Test-KillSwitch {
-    $url = ''
-    $req = [system.Net.WebRequest]::Create($url)
-    $res = 0
-    try {
-        $res = $req.GetResponse()
-    } 
-    catch [System.Net.WebException] {
-        $res = $_.Exception.Response
-    }
-    if ($res.StatusCode -eq "OK") {
-        return $true
-    }
-    return $false
-}
-
-$not_connected = $true
-$not_validtime = $true
-$limit_switch = $true
-$kill_switch = $true
-$count = 9999
+# Main.
+$hr = $null
+$switch_limit = $false
+$secs = $SWITCHCHK_SECS
 while ($true) {
-    if ($count -gt 30) {
-        $count = 0
-        $not_connected = (-not (Test-Internet))
-        $not_validtime = (-not (Test-TimeRange))
-        $limit_switch = Test-LimitSwitch
-        $kill_switch = Test-KillSwitch
+
+    # Check time limits.
+    $time_limit = $false
+    $hr = (Get-Date).Hour
+    foreach ($limited_hr in $LIMITED_HRS) {
+        if ($hr -eq $limited_hr) {
+            $time_limit = $true
+        }
     }
-    else {
-        $count++
+
+    # Check kill switch.
+    if ($secs -ge $SWITCHCHK_SECS) {
+        $secs = 0
+
+        # Create request.
+        $rqst = [system.Net.WebRequest]::Create($URL)
+        $resp = $null
+        try {
+            $resp = $rqst.GetResponse()
+        } 
+        catch [System.Net.WebException] {
+            $resp = $_.Exception.Response
+        }
+
+        # Eval response.
+        if ($resp.StatusCode -ne "OK") {
+            $switch_limit = $false
+        }
+        else {
+            $switch_limit = $true
+        }
     }
-    if ($kill_switch) {
-        Stop-Computer -Force
+    
+    # Implement limits.
+    if ($time_limit -or $switch_limit) {
+        foreach ($limited_app in $LIMITED_APPS) {
+            Stop-Process -Name $limited_app -Force -ErrorAction SilentlyContinue
+        }
     }
-    if ($not_connected -or $not_validtime -or $limit_switch) {
-        Stop-Process -Name "vlc" -Force -ErrorAction SilentlyContinue
-        Stop-Process -Name "wmplayer" -Force -ErrorAction SilentlyContinue
-        Stop-Process -Name "Microsoft.Photos" -Force -ErrorAction SilentlyContinue
-        Stop-Process -Name "msedge" -Force -ErrorAction SilentlyContinue
-        Stop-Process -Name "chrome" -Force -ErrorAction SilentlyContinue
-        Stop-Process -Name "iexplore" -Force -ErrorAction SilentlyContinue
-    }
-    Start-Sleep -Seconds 5
+
+    # Delay.
+    Start-Sleep -Seconds $SLEEP_SECS
+    $secs += $SLEEP_SECS
+
 }
