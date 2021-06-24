@@ -21,7 +21,7 @@ while ($true) {
     }
 
     # Check kill switch.
-    if ($secs -ge $SWITCHCHK_SECS) {
+    if ((-not $time_limit) -and ($secs -ge $SWITCHCHK_SECS)) {
         $secs = 0
 
         # Create request.
@@ -46,7 +46,7 @@ while ($true) {
     # Implement limits.
     if ($time_limit -or $switch_limit) {
         foreach ($limited_app in $LIMITED_APPS) {
-            Stop-Process -Name $limited_app -Force -ErrorAction SilentlyContinue
+            #Stop-Process -Name $limited_app -Force -ErrorAction SilentlyContinue
         }
     }
 
