@@ -22,22 +22,6 @@ while ($true) {
         }
     }
 
-    # Verify that A2Y is on. Force computer to turn off if not.
-    $i = 0
-    while ($true) {
-        $status = Get-Process | Where {$_.ProcessName -Like "Accountable2You"}
-        if ($status.Length -lt 1) {
-            $i += 1
-            if ($i -gt ($SWITCHCHK_SECS/4)) {
-                Stop-Computer -Force
-            }
-            Start-Sleep -Seconds $SLEEP_SECS
-        }
-        else {
-            break
-        }
-    }
-
     # Check kill switch.
     if ((-not $time_limit) -and ($secs -ge $SWITCHCHK_SECS)) {
         $secs = 0
