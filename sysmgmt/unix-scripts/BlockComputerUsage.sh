@@ -8,21 +8,27 @@
 #   .AUTHOR
 #   Charles Christensen
 #
+#   .NOTES
+#   For best usage, add as a LaunchDaemon to run as root on
+#   startup and block chflags, killall, su, and visudo in sudoers.
+#
 
 # Initialize.
-echo "Starting BlockComputerUsage.sh on `date`...\n" > /Library/Logs/BlockComputerUsage.log
-ran_once=0
+echo "Starting BlockComputerUsage.sh on `date` as `whoami`..." > /Library/Logs/BlockComputerUsage.log
+echo " " >> /Library/Logs/BlockComputerUsage.log
+run_once=0
+run_fivesecs=0
 
 # Monitor tasks.
 while [ 1 ]
 do
 
-    # Prevent night-time computer usage.
-    hr=$(date +%H)
+    # Prevent night-time computer usage. (blocks 5pm - 9am & Sundays)
     dow=$(date +%A)
-    if (( 10#$hr < 7 )) || (( 10#$hr >= 17 )) || [ $dow == "Sunday" ]
+    hr=$(date +%H)
+    if (( 10#$hr < 9 )) || (( 10#$hr >= 17 )) || [ $dow == "Sunday" ]
     then
-        echo "> Shutting down..." >> /Library/Logs/BlockComputerUsage.log
+        echo "> Shutting down." >> /Library/Logs/BlockComputerUsage.log
         shutdown -h now  >> /Library/Logs/BlockComputerUsage.log
     fi
 
@@ -53,37 +59,47 @@ do
 
     # Prevent user from modifying this file, its startup, or hosts.
     [[ $0 = /* ]] && fullpath=$0 || fullpath=$PWD/${0#./}
+    chown root:wheel $fullpath
     chflags schg $fullpath
     chflags uchg $fullpath
+    chown root:wheel /Library/LaunchDaemons/com.charlesrc19.BlockComputerUsage.plist
     chflags schg /Library/LaunchDaemons/com.charlesrc19.BlockComputerUsage.plist
     chflags uchg /Library/LaunchDaemons/com.charlesrc19.BlockComputerUsage.plist
+    chown root:wheel /private/etc/hosts
     chflags schg /private/etc/hosts
     chflags uchg /private/etc/hosts
-    
-    # Prevent using Terminal.
-    pid=$(pgrep -x "Terminal")
-    if [ -z "$pid" ]
-    then
-        echo "" >> /dev/null
-    else
-        echo "> Terminal blocked." >> /Library/Logs/BlockComputerUs$
-        killall Terminal >> /Library/Logs/BlockComputerUsage.log
-        kill -9 $pid >> /Library/Logs/BlockComputerUsage.log
-    fi
 
-    sleep 0.1 > /dev/null
-
-    # Run one-time tasks.
-    if [ $ran_once == 0 ]
+    # Run five-second tasks.
+    sec=$(date +%S)
+    if (( 10#$run_fivesecs < 10#$sec ))
     then
-        ran_once=1
+        let run_fivesecs=$sec+5
+        if (( 10#$run_fivesecs > 60 ))
+        then
+            let run_fivesecs=$run_fivesecs-60
+        fi
 
         # Prevent extra user creation.
-        echo "> Adding flags to prevent user account creation..." >> /Library/Logs/BlockComputerUsage.log
         security -q authorizationdb read  system.preferences.accounts > /tmp/system.preferences.accounts.plist
         defaults write /tmp/system.preferences.accounts.plist group wheel > /dev/null
         security -q authorizationdb write system.preferences.accounts < /tmp/system.preferences.accounts.plist
-        echo "> Complete!\n" >> /Library/Logs/BlockComputerUsage.log
+
+        # Prevent time modification.
+        security -q authorizationdb read  system.preferences.datetime > /tmp/system.preferences.datetime.plist
+        defaults write /tmp/system.preferences.datetime.plist group wheel > /dev/null
+        security -q authorizationdb write system.preferences.datetime < /tmp/system.preferences.datetime.plist
+
+        # Prevent screen recording modification.
+        security -q authorizationdb read  system.preferences.security > /tmp/system.preferences.security.plist
+        defaults write /tmp/system.preferences.security.plist group wheel > /dev/null
+        security -q authorizationdb write system.preferences.security < /tmp/system.preferences.security.plist
+
+    fi
+
+    # Run one-time tasks.
+    if [ $run_once == 0 ]
+    then
+        run_once=1
 
         # Update hosts.
         if [ $dow = "Monday" ]
@@ -94,14 +110,16 @@ do
             chflags nouchg /private/etc/hosts
             rm /private/etc/hosts
             echo "> Downloading updated hosts file..." >> /Library/Logs/BlockComputerUsage.log
-            curl -m 2 -s --retry 1 --retry-delay 1 --connect-timeout 2 https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling-porn/hosts -o /private/etc/hosts
+            curl -m 30 -s --retry 3 --retry-delay 1 --connect-timeout 3 https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/fakenews-gambling-porn/hosts -o /private/etc/hosts
             echo "> New host file downloaded." >> /Library/Logs/BlockComputerUsage.log
-            cat /private/etc/hosts_custom.txt >> /private/etc/hosts
-            sudo sudo killall -HUP mDNSResponder
-            chflags schg /private/etc/hosts
-            chflags uchg /private/etc/hosts
-            echo "> Complete!\n" >> /Library/Logs/BlockComputerUsage.log
+            cat /Users/cchristensen/Documents/hosts_custom.txt >> /private/etc/hosts
+            killall -HUP mDNSResponder
+            echo "> Complete!" >> /Library/Logs/BlockComputerUsage.log
+            echo " " >> /Library/Logs/BlockComputerUsage.log
         fi
+
     fi
+
+    sleep 0.1 > /dev/null
 
 done
